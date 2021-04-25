@@ -183,52 +183,47 @@ def training(X,y,model='Logistic Regression',cv=5,score='accuracy_score',p_name=
             
         if model=='Knn Regression':
             n_neighbors=[1,2,3,4,5,10,20,30]
-            gb=models_R[model]
+            gb=models[model]
             gs = GridSearchCV(gb,param_grid={"n_neighbors": n_neighbors},scoring=score,cv=cv,n_jobs=-3,verbose=2)
-            gs.fit(X, y)
-    
-        if model=='Logistic Regression':
-            C  = np.logspace(-3,2,5)
-            lr = models_R[model]
-            gs = GridSearchCV(lr,param_grid={"C": C},scoring=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Ridge':
             alpha  = np.logspace(0,1,5)
-            lr = models_R[model]
+            lr = models[model]
             gs = GridSearchCV(lr,param_grid={"alpha": alpha},scoring=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Lasso':
             alpha  = np.logspace(0,5,5)
-            lr = models_R[model]
+            lr = models[model]
             gs = GridSearchCV(lr,param_grid={"alpha": alpha},scoring=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Tree Regression':
             max_depth=[30,40,50,100]
-            rt=models_R[model]
+            rt=models[model]
             gs = GridSearchCV(rt,param_grid={"max_depth": max_depth},scoring=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Random Forest Regression':
             max_depth=np.arange(1,100,10)
             n_estimators=np.arange(3,21,3)
-            rf=models_R[model]
+            rf=models[model]
             gs = GridSearchCV(rf,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='GBoost Regression':
             max_depth=np.arange(1,100,10)
             n_estimators=np.arange(3,21,3)
-            br=models_R[model]
+            br=models[model]
             gs = GridSearchCV(br,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
 
         if save==True:
             save_model(gs,model)
-        
+    print('best score = ', gs.best_score_)
+    print('best parameters = ', gs.best_params_)
     return gs 
     
     
