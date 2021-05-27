@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[40]:
+# In[17]:
 
 
 import pandas as pd
 import numpy as np
+import scipy as scp
 
 from sklearn.compose import ColumnTransformer
 from sklearn.datasets import fetch_openml
@@ -14,7 +15,7 @@ from sklearn.impute import SimpleImputer,KNNImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB, MultinomialNB
+from sklearn.naive_bayes import GaussianNB, MultinomialNB,ComplementNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
@@ -66,7 +67,10 @@ models = OrderedDict([
           ('Lasso', Lasso()),  
           ('Tree Regression', DecisionTreeRegressor()),
           ('Random Forest Regression', RandomForestRegressor()),
-          ('GBoost Regression', GradientBoostingRegressor())
+          ('GBoost Regression', GradientBoostingRegressor()),
+          ('Gaussian NB', GaussianNB()),
+          ('Multinomial NB', MultinomialNB()),
+          ('Complement NB',ComplementNB())
           ])
 
 
@@ -113,22 +117,28 @@ def training(X,y,model='Logistic Regression',cv=5,score='accuracy_score',p_name=
             gs = GridSearchCV(knn,param_grid={"n_neighbors": n_neighbors},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
-        if model=='Gauss Naive Bayes':
+        if model=='Gaussian NB':
             var_smoothing=np.logspace(-10,-3,30)
             gnb=models[model]
             gs = GridSearchCV(gnb,param_grid={"var_smoothing": var_smoothing},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
-            if sparse.issparse(X):
+            if scp.sparse.issparse(X):
                 Z=X.toarray()
                 gs.fit(Z, y)
             else:
                 gs.fit(X, y)
 
-        if model=='Multi Naive Bayes':
+        if model=='Multinomial NB':
             alpha=np.logspace(-3,0,20)
             mnb=models[model]
             gs = GridSearchCV(mnb,param_grid={"alpha": alpha},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
+        if model=='Complement NB':
+            alpha=np.logspace(-3,0,20)
+            mnb=models[model]
+            gs = GridSearchCV(mnb,param_grid={"alpha": alpha},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs.fit(X, y)
+            
         if model=='Logistic Regression':
             C  = np.logspace(-3,2,10)
             lr = models[model]
