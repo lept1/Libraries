@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[17]:
+# In[107]:
 
 
 import pandas as pd
@@ -25,13 +25,13 @@ from sklearn.ensemble import AdaBoostClassifier,GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor,GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor,GradientBoostingRegressor,AdaBoostRegressor
 
 from collections import OrderedDict
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import make_scorer
 from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score
-from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.metrics import mean_squared_error,mean_absolute_error,r2_score
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import cross_val_score
@@ -56,21 +56,22 @@ models = OrderedDict([
           ('Poly SVM', SVC(kernel='poly',  probability=True)),
           ('RBF SVM', SVC(kernel='rbf',  probability=True)),
           ('Classification Tree', DecisionTreeClassifier()),
-          ('Random Forest', RandomForestClassifier()),
+          ('Random Forest', RandomForestClassifier(random_state=42)),
           ('MLP', MLPClassifier(activation='tanh',solver='adam', max_iter=10000,
                                                   learning_rate_init=0.001, random_state=42)),
           ('AdaBoost',AdaBoostClassifier(random_state=42,base_estimator = RandomForestClassifier())),
-          ('GBoost',GradientBoostingClassifier()),
+          ('GBoost',GradientBoostingClassifier(random_state=42)),
           ('Knn Regression', KNeighborsRegressor(weights='distance')),
           ('Linear Regression', LinearRegression(fit_intercept=True,normalize=True)),
           ('Ridge', Ridge(fit_intercept=True,normalize=True)),
           ('Lasso', Lasso()),  
           ('Tree Regression', DecisionTreeRegressor()),
-          ('Random Forest Regression', RandomForestRegressor()),
-          ('GBoost Regression', GradientBoostingRegressor()),
+          ('Random Forest Regression', RandomForestRegressor(random_state=42)),
+          ('GBoost Regression', GradientBoostingRegressor(random_state=42)),
           ('Gaussian NB', GaussianNB()),
           ('Multinomial NB', MultinomialNB()),
-          ('Complement NB',ComplementNB())
+          ('Complement NB',ComplementNB()),
+          ('AdaBoost Regression',AdaBoostRegressor(random_state=42,base_estimator=KNeighborsRegressor()))
           ])
 
 
@@ -98,10 +99,13 @@ def training(X,y,model='Logistic Regression',cv=5,score='accuracy_score',p_name=
 
     
     
-    scorers = {'f1_score': make_scorer(f1_score, average = 'weighted'),
+    scorers_class = {'f1_score': make_scorer(f1_score),
               'accuracy_score': make_scorer(accuracy_score),
-              'precision_score': make_scorer(precision_score, average = 'weighted')}
-    
+              'precision_score': make_scorer(precision_score)}
+    scorers_regr  = {'mse': make_scorer(mean_squared_error),
+              'mae': make_scorer(mean_absolute_error),
+              'r2': make_scorer(r2_score)}
+   
     try:
         filename = model+'.sav'
         gs=joblib.load(filename)
@@ -114,13 +118,13 @@ def training(X,y,model='Logistic Regression',cv=5,score='accuracy_score',p_name=
         if model=='Knn':
             n_neighbors=np.arange(1,30,1)
             knn=models[model]
-            gs = GridSearchCV(knn,param_grid={"n_neighbors": n_neighbors},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(knn,param_grid={"n_neighbors": n_neighbors},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Gaussian NB':
             var_smoothing=np.logspace(-10,-3,30)
             gnb=models[model]
-            gs = GridSearchCV(gnb,param_grid={"var_smoothing": var_smoothing},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(gnb,param_grid={"var_smoothing": var_smoothing},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             if scp.sparse.issparse(X):
                 Z=X.toarray()
                 gs.fit(Z, y)
@@ -130,51 +134,51 @@ def training(X,y,model='Logistic Regression',cv=5,score='accuracy_score',p_name=
         if model=='Multinomial NB':
             alpha=np.logspace(-3,0,20)
             mnb=models[model]
-            gs = GridSearchCV(mnb,param_grid={"alpha": alpha},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(mnb,param_grid={"alpha": alpha},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Complement NB':
             alpha=np.logspace(-3,0,20)
             mnb=models[model]
-            gs = GridSearchCV(mnb,param_grid={"alpha": alpha},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(mnb,param_grid={"alpha": alpha},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
             
         if model=='Logistic Regression':
             C  = np.logspace(-3,2,10)
             lr = models[model]
-            gs = GridSearchCV(lr,param_grid={"C": C},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(lr,param_grid={"C": C},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Linear SVM':
             C=np.logspace(-3,2,10)
             lsvm=models[model]
-            gs = GridSearchCV(lsvm,param_grid={"C": C},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(lsvm,param_grid={"C": C},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='RBF SVM':
             gamma=np.logspace(-4,1,10)
             C=np.logspace(-3,3,10)
             rsvm=models[model]
-            gs = GridSearchCV(rsvm,param_grid={"C": C,"gamma":gamma},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(rsvm,param_grid={"C": C,"gamma":gamma},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Classification Tree':
             max_depth=np.arange(1,50,1)
             ct=models[model]
-            gs = GridSearchCV(ct,param_grid={"max_depth": max_depth},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(ct,param_grid={"max_depth": max_depth},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Random Forest':
             max_depth=np.arange(1,50,5)
             n_estimators=np.arange(1,50,5)
             rf=models[model]
-            gs = GridSearchCV(rf,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=scorers,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(rf,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='MLP':
             hidden_layer_sizes=[(12,4,2),(6,5,4,3,2),(7,6,5,4,3,2),(8,7,6,5,4,3,2)]
             mlp=models[model]
-            gs = GridSearchCV(mlp,param_grid={"hidden_layer_sizes": hidden_layer_sizes},scoring=scorers,refit='accuracy_score',cv=cv,n_jobs=-3,verbose=5)
+            gs = GridSearchCV(mlp,param_grid={"hidden_layer_sizes": hidden_layer_sizes},scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='AdaBoost':
@@ -182,58 +186,66 @@ def training(X,y,model='Logistic Regression',cv=5,score='accuracy_score',p_name=
                   "n_estimators" : np.arange(1,50,1)
                  }
             ab=models[model]
-            gs = GridSearchCV(ab,param_grid=param_grid,scoring=scorers,refit='accuracy_score',cv=cv,n_jobs=-3,verbose=5)
+            gs = GridSearchCV(ab,param_grid=param_grid,scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='GBoost':
             param_grid = {"n_estimators": np.arange(1,100,2)}
             gb=models[model]
-            gs = GridSearchCV(gb,param_grid=param_grid,scoring=scorers,refit='accuracy_score',cv=cv,n_jobs=-3,verbose=5)
+            gs = GridSearchCV(gb,param_grid=param_grid,scoring=scorers_class,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
             
         if model=='Knn Regression':
             n_neighbors=[1,2,3,4,5,10,20,30]
             gb=models[model]
-            gs = GridSearchCV(gb,param_grid={"n_neighbors": n_neighbors},scoring=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(gb,param_grid={"n_neighbors": n_neighbors},scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Ridge':
             alpha  = np.logspace(0,1,5)
             lr = models[model]
-            gs = GridSearchCV(lr,param_grid={"alpha": alpha},scoring=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(lr,param_grid={"alpha": alpha},scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Lasso':
             alpha  = np.logspace(0,5,5)
             lr = models[model]
-            gs = GridSearchCV(lr,param_grid={"alpha": alpha},scoring=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(lr,param_grid={"alpha": alpha},scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Tree Regression':
             max_depth=[30,40,50,100]
             rt=models[model]
-            gs = GridSearchCV(rt,param_grid={"max_depth": max_depth},scoring=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(rt,param_grid={"max_depth": max_depth},scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='Random Forest Regression':
             max_depth=np.arange(1,100,10)
             n_estimators=np.arange(3,21,3)
             rf=models[model]
-            gs = GridSearchCV(rf,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(rf,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
 
         if model=='GBoost Regression':
-            max_depth=np.arange(1,100,10)
-            n_estimators=np.arange(3,21,3)
+            max_depth=np.arange(1,100,1)
+            n_estimators=np.arange(1,21,2)
             br=models[model]
-            gs = GridSearchCV(br,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=score,cv=cv,n_jobs=-3,verbose=2)
+            gs = GridSearchCV(br,param_grid={"max_depth": max_depth,"n_estimators": n_estimators},scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
             gs.fit(X, y)
-
-
+            
+        if model=='AdaBoost Regression':
+            param_grid = {#"learning_rate" : np.logspace(0,1,10),
+                  "n_estimators" : np.arange(1,50,2)
+                 }
+            ab=models[model]
+            gs = GridSearchCV(ab,param_grid=param_grid,scoring=scorers_regr,refit=score,cv=cv,n_jobs=-3,verbose=2)
+            gs.fit(X, y)
+    
         if save==True:
             save_model(gs,model)
-    print('best score = ', gs.best_score_)
-    print('best parameters = ', gs.best_params_)
+            
+        print('best score = ', gs.best_score_)
+        print('best parameters = ', gs.best_params_)
     return gs 
     
     
